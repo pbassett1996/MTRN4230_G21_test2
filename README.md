@@ -1,6 +1,6 @@
 # MTRN4230_G21
 <p align="center">
-<img src="https://github.com/pbassett1996/MTRN4230_UR5_G21/blob/master/mtrn4230_g21/media/4230_G21_GIF.gif" width="480">
+<img src="https://github.com/pbassett1996/MTRN4230_UR5_G21/blob/master/mtrn4230_g21/media/4230_G21_GIF.gif" width="840">
 
 ## About
 
