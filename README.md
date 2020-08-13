@@ -26,7 +26,7 @@ Note: depending on your version of Gazebo, you may receive the following error "
 ```bash
 sudo apt-get install libignition-math2-dev
 ```
-To run the code wiht ROS and Gazebo, execute the following,
+To run the code with ROS and Gazebo, execute the following,
 ```bash
 roslaunch mtrn4230_g21 ur5_world.launch
 ```
