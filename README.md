@@ -20,10 +20,11 @@ cd ~/simulation_ws/src
 git clone https://github.com/pbassett1996/MTRN4230_UR5_G21.git
 ```
 To build the code, return to the 'simulation_ws' directy and perform the following,
+```bash
 catkin_make
 source devel/setup.bash
 export SVGA_VGPU10=0
-
+```
 Note: depending on your version of Gazebo, you may receive the following error "fatal error: ignition/math/Inertial.h: ...". If so then please install the missing libignition math 2 package,
 ```bash
 sudo apt-get install libignition-math2-dev
