@@ -39,18 +39,24 @@ import control_msgs.msg
 import time
 bucket_x = -0.4
 bucket_y = 0.6
+bucket_y = 0.5
 travel_height = 0.3
-pick_height = 0.09
+end_effector_length = 0.05
 
 
 class MoveItCartesianPath:
     def callback(self,data):
+        self.moveArm(1, data)
+
+    def moveArm(self, flag, data):
         rospy.loginfo("received the following point " + str(data))
         # Get the current pose so we can add it as a waypoint
-        for j in range(3):
+        j = 0
+        while (j < 3):
             
             start_pose = self.arm.get_current_pose(self.end_effector_link).pose
             print(start_pose)
+            
         
             # Initialize the waypoints list
             waypoints = []
@@ -60,54 +66,66 @@ class MoveItCartesianPath:
             waypoints.append(start_pose)
 
             wpose = deepcopy(start_pose)
-            if (j == 0):
-                eef_step = 0.02
-                self.goal.command.position = 0.0  # From 0.0 to 0.8
-                self.goal.command.max_effort = -1 # Do not limit the effort
-                self.client.send_goal(self.goal)
-                self.client.wait_for_result()
-                time.sleep(0.5)
-                # Set the next waypoint to location of the pick object
-                wpose.position.x = data.x-0.025
-                wpose.position.y = data.y-0.025
-                wpose.position.z = travel_height
-                wpose.orientation.x = -1
-                wpose.orientation.y = 0
-                wpose.orientation.z = 1
-                wpose.orientation.w = 0
-                waypoints.append(deepcopy(wpose))
-            elif (j == 1):
-                eef_step = 0.01
-                wpose.position.x = data.x
-                wpose.position.y = data.y
-                wpose.position.z = pick_height
-                wpose.orientation.x = -1
-                wpose.orientation.y = 0
-                wpose.orientation.z = 1
-                wpose.orientation.w = 0
-                waypoints.append(deepcopy(wpose))
+            if(flag):
+                if (j == 0):
+                    eef_step = 0.02
+                    self.goal.command.position = 0.0  # From 0.0 to 0.8
+                    self.goal.command.max_effort = -1 # Do not limit the effort
+                    self.client.send_goal(self.goal)
+                    self.client.wait_for_result()
+                    time.sleep(0.5)
+                    # Set the next waypoint to location of the pick object
+                    wpose.position.x = data.x-0.025
+                    wpose.position.y = data.y-0.025
+                    wpose.position.z = travel_height
+                    wpose.orientation.x = -1
+                    wpose.orientation.y = 0
+                    wpose.orientation.z = 1
+                    wpose.orientation.w = 0
+                    waypoints.append(deepcopy(wpose))
+                elif (j == 1):
+                    eef_step = 0.01
+                    wpose.position.x = data.x
+                    wpose.position.y = data.y
+                    wpose.position.z = data.depth + end_effector_length
+                    wpose.orientation.x = -1
+                    wpose.orientation.y = 0
+                    wpose.orientation.z = 1
+                    wpose.orientation.w = 0
+                    waypoints.append(deepcopy(wpose))
 
-                # lower to pick the object
-                #wpose.position.x = data.x
-                #wpose.position.y = data.y
-                #wpose.position.z = pick_height+0.3
-                #waypoints.append(deepcopy(wpose))
+                else:
+                    eef_step = 0.02
+                    self.goal.command.position = 0.37 # From 0.0 to 0.8
+                    self.goal.command.max_effort = -1 # Do not limit the effort
+                    self.client.send_goal(self.goal)
+                    self.client.wait_for_result()
+                    time.sleep(0.5)
+                    # raise
+                    wpose.position.x = data.x
+                    wpose.position.y = data.y
+                    wpose.position.z = travel_height
+                    waypoints.append(deepcopy(wpose))
+
+                    #move to the bin
+                    wpose.position.x = bucket_x
+                    wpose.position.y = bucket_y
+                    wpose.position.z = travel_height
+                    wpose.orientation.x = -1
+                    wpose.orientation.y = 0
+                    wpose.orientation.z = 0.5
+                    wpose.orientation.w = 0
+                    waypoints.append(deepcopy(wpose))
+
             else:
-                eef_step = 0.02
-                self.goal.command.position = 0.37 # From 0.0 to 0.8
-                self.goal.command.max_effort = -1 # Do not limit the effort
-                self.client.send_goal(self.goal)
-                self.client.wait_for_result()
-                time.sleep(0.5)
-                # raise
-                wpose.position.x = data.x
-                wpose.position.y = data.y
+                eef_step = 0.01
+                wpose.position.x = start_pose.position.x-0.3
+                wpose.position.y = start_pose.position.y+0.1
                 wpose.position.z = travel_height
                 waypoints.append(deepcopy(wpose))
 
-                #move to the bin
-                wpose.position.x = bucket_x
-                wpose.position.y = bucket_y
+                wpose.position.x = start_pose.position.x-0.6
+                wpose.position.y = start_pose.position.y+0.2
                 wpose.position.z = travel_height
                 wpose.orientation.x = -1
                 wpose.orientation.y = 0
@@ -115,21 +133,17 @@ class MoveItCartesianPath:
                 wpose.orientation.w = 0
                 waypoints.append(deepcopy(wpose))
 
-                # place in the bin
-               # wpose.position.x = bucket_x
-                #wpose.position.y = bucket_y
-                #wpose.position.z = pick_height+0.1
-                #waypoints.append(deepcopy(wpose))
-
-                #retract from the bin
-               # wpose.position.x = bucket_x
-                #wpose.position.y = bucket_y
-                #wpose.position.z = travel_height
-                #waypoints.append(deepcopy(wpose))
+                wpose.position.x = bucket_x
+                wpose.position.y = bucket_y
+                wpose.position.z = travel_height
+                
+                waypoints.append(deepcopy(wpose))
+                j = 3
 
             fraction = 0.0
             maxtries = 100
             attempts = 0
+            j = j+1
 
             # Set the internal state to the current state
             self.arm.set_start_state_to_current_state()
@@ -250,6 +264,7 @@ class MoveItCartesianPath:
         # Allow some leeway in position (meters) and orientation (radians)
         self.arm.set_goal_position_tolerance(0.01)
         self.arm.set_goal_orientation_tolerance(0.1)
+        self.moveArm(0,0)
         rospy.spin()
 
 
