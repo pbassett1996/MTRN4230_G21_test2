@@ -21,11 +21,11 @@ import numpy as np
 import math
 
 colour = "all"
-shape = "all"
+shape = "all" 
 
 
 class ObjectDetection:
-    def __init__(self, Colour, Shape):
+    def __init__(self, Colour, Shape, ObjectDictionary):
         global colour, shape
         #rospy.init_node("ObjectDetection", anonymous=False)
         self.bridge = cv_bridge.CvBridge() 
@@ -37,6 +37,10 @@ class ObjectDetection:
         shape = Shape
         self.store_vals = False
         self.positions = []
+        self.Dictionary = ObjectDictionary
+        self.posCnt = 0
+        self.UI_flag = 0
+        
         #Create subscribers to depth sensor messages
         image_sub = rospy.Subscriber('camera/color/image_raw', 
                                   Image, self.image_callback)
@@ -47,8 +51,7 @@ class ObjectDetection:
         info_sub = rospy.Subscriber('camera/depth/camera_info', 
                                   CameraInfo, self.info_callback)
     #Identify colours based on hue values
-    def ColourDetection(self):
-        global colour
+    def ColourDetection(self, colour):
         if(colour == "all"):
             hue_min = 0
             hue_max = 255
@@ -72,84 +75,103 @@ class ObjectDetection:
     
     #Identify shapes based on number of edges
     def ShapeDetection(self):
+        global colour
+        colourArray = ["green", "red", "blue", "yellow"]
         imgCopy = self.img.copy()
-        
-        #[height, width] = self.img.shape[1,2]
-        
-        #Convert to HSV
-        imgHSV = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
-        hue_min, hue_max = self.ColourDetection()
-        
-        #Threshold HSV values
-        lower = np.array([hue_min, 1, 220])
-        upper = np.array([hue_max, 255, 255])
-        mask = cv2.inRange(imgHSV, lower, upper)
-        imgResult = cv2.bitwise_and(self.img, self.img, mask=mask)
-
-        imgGray = cv2.cvtColor(imgResult,  cv2.COLOR_BGR2GRAY)
-        imgDil = mask.copy()
-        
-        #Identify the contours of objects in the image
-        #Source: https://www.youtube.com/watch?v=WQeoO7MI0Bs&t=2842s
-        i = 0
-        contours,  hierarchy = cv2.findContours(imgDil,  cv2.RETR_EXTERNAL,  cv2.CHAIN_APPROX_NONE)[-2:]
-        for cnt in contours:
-            cv2.drawContours(imgDil,  cnt,  -1,  (255, 0, 0), 3)
-            peri = cv2.arcLength(cnt,  True)
-            approx = cv2.approxPolyDP(cnt,  0.02*peri,  True)
-            objCor = len(approx)
-            x,  y,  w,  h = cv2.boundingRect(approx)
-            
-            #Find centroid of contours
-            #Source: pyimagesearh.com/2016/02/01/opencv-center-of-contour/
-            M = cv2.moments(cnt)
-            if M["m00"] > 0:
-                cX = int(M["m10"]/M["m00"])
-                cY = int(M["m01"]/M["m00"])
-                objectType = ""
-                #Identify objects based on number of edges
-                if objCor == 3: objectType = "Triangle"
-                elif objCor == 4:
-                    aspRatio = w/float(h)
-                    if aspRatio > 0.9 and aspRatio < 1.1: objectType = "Cube"
-                    else: objectType = "Rect Box"
-                elif objCor >= 8:
-                    objectType = "Cylinder"
-                #cv2.rectangle(img,  (x, y),  (x+w,  y+h),  (0,  255,  0), 2)
-                if(shape == objectType or shape == "all"):
-                    #Calculate vertical height of objects
-                    length = (self.depth_array[cY,cX].astype(float))
-                    obj_height = round((1.5-length)*100 ,1)
-                    
-                    #Calculate global X Y coordinates
-
-                    x_min = float(self.point_cloud[:,0].min())
-                    x_max = float(self.point_cloud[:,0].max())
-                    y_min = float(self.point_cloud[:,1].min())
-                    y_max = float(self.point_cloud[:,1].max())
-
-                    cX = float(M["m10"]/M["m00"])
-                    cY = float(M["m01"]/M["m00"])
-
-                    y_inertial = -round(x_min +  (x_max*2)*(cX/640), 4)
-                    x_inertial = -round(y_min +  (y_max*2)*(cY/480), 4)+0.5
-                    if(self.store_vals == True):
-                        if(i == len(self.positions)):
-                            self.positions.append([x_inertial, y_inertial])
-                        else:
-                            self.positions[i] = [x_inertial, y_inertial]
-                        i = i+1
-
-                    #Add text to object for testing purposes
-                    text1 = "Shape = " + objectType
-                    text2 = "Height = " + str(obj_height) + " cm"
-                    text3 = "Pos = [" + str(x_inertial) + ", " + str(y_inertial) + "] m"
-                    cv2.putText(imgCopy,  text1,  (x+(w/2)+20,  y+(h/2)-10),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
-                    cv2.putText(imgCopy,  text2,  (x+(w/2)+20,  y+(h/2)),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
-                    cv2.putText(imgCopy,  text3,  (x+(w/2)+20,  y+(h/2)+10),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
-
         cv2.imshow("window", imgCopy)
         cv2.waitKey(50)
+        if(self.store_vals == True):
+            if(self.UI_flag):
+                nums = len(colourArray)
+            else:
+                nums = 1
+            for j in range(nums):
+                if(self.UI_flag):
+                    colourInput = colourArray[j]
+                else:
+                    colourInput = colour
+                #Convert to HSV
+                imgHSV = cv2.cvtColor(self.img, cv2.COLOR_BGR2HSV)
+                hue_min, hue_max = self.ColourDetection(colourInput)
+                
+                #Threshold HSV values
+                lower = np.array([hue_min, 1, 220])
+                upper = np.array([hue_max, 255, 255])
+                mask = cv2.inRange(imgHSV, lower, upper)
+                imgResult = cv2.bitwise_and(self.img, self.img, mask=mask)
+
+                imgGray = cv2.cvtColor(imgResult,  cv2.COLOR_BGR2GRAY)
+                imgDil = mask.copy()
+                
+                #Identify the contours of objects in the image
+                #Source: https://www.youtube.com/watch?v=WQeoO7MI0Bs&t=2842s
+                
+                contours,  hierarchy = cv2.findContours(imgDil,  cv2.RETR_EXTERNAL,  cv2.CHAIN_APPROX_NONE)[-2:]
+                for cnt in contours:
+                    cv2.drawContours(imgDil,  cnt,  -1,  (255, 0, 0), 3)
+                    peri = cv2.arcLength(cnt,  True)
+                    approx = cv2.approxPolyDP(cnt,  0.02*peri,  True)
+                    objCor = len(approx)
+                    x,  y,  w,  h = cv2.boundingRect(approx)
+                    
+                    #Find centroid of contours
+                    #Source: pyimagesearh.com/2016/02/01/opencv-center-of-contour/
+                    M = cv2.moments(cnt)
+                    if M["m00"] > 0:
+                        cX = int(M["m10"]/M["m00"])
+                        cY = int(M["m01"]/M["m00"])
+                        objectType = ""
+                        #Identify objects based on number of edges
+                        if objCor == 3: objectType = "triangle"
+                        elif objCor == 4:
+                            aspRatio = w/float(h)
+                            if aspRatio > 0.9 and aspRatio < 1.1: objectType = "cube"
+                            else: objectType = "box"
+                        elif objCor >= 8:
+                            objectType = "cylinder"
+                        #cv2.rectangle(img,  (x, y),  (x+w,  y+h),  (0,  255,  0), 2)
+                        if(shape == objectType or shape == "all"):
+                            #Calculate vertical height of objects
+                            length = (self.depth_array[cY,cX].astype(float))
+                            obj_height = round((1.5-length)*100 ,1)
+                            
+                            #Calculate global X Y coordinates
+
+                            x_min = float(self.point_cloud[:,0].min())
+                            x_max = float(self.point_cloud[:,0].max())
+                            y_min = float(self.point_cloud[:,1].min())
+                            y_max = float(self.point_cloud[:,1].max())
+
+                            cX = float(M["m10"]/M["m00"])
+                            cY = float(M["m01"]/M["m00"])
+
+                            y_inertial = -round(x_min +  (x_max*2)*(cX/640), 4)+0.2
+                            x_inertial = -round(y_min +  (y_max*2)*(cY/480), 4)+0.5
+                            
+                            
+                            Lookup = colourInput+" " + objectType
+                            try:
+                                objects = self.Dictionary[Lookup]
+                            except:
+                                objects = -1
+                            
+                            if(objects > 0 or self.UI_flag == 0):
+                                if(self.posCnt == len(self.positions)):
+                                    self.positions.append([x_inertial, y_inertial, obj_height/100])
+                                else:
+                                    self.positions[self.posCnt] = [x_inertial, y_inertial, obj_height/100]
+                                self.posCnt +=1
+                                self.Dictionary[Lookup] = objects-1
+
+                            #Add text to object for testing purposes
+                            #text1 = "Shape = " + objectType
+                            #text2 = "Height = " + str(obj_height) + " cm"
+                            #text3 = "Pos = [" + str(x_inertial) + ", " + str(y_inertial) + "] m"
+                            #cv2.putText(imgCopy,  text1,  (x+(w/2)+20,  y+(h/2)-10),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
+                            #cv2.putText(imgCopy,  text2,  (x+(w/2)+20,  y+(h/2)),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
+                            #cv2.putText(imgCopy,  text3,  (x+(w/2)+20,  y+(h/2)+10),  cv2.FONT_HERSHEY_COMPLEX,  0.3,  (255, 255, 255),  1)
+            self.store_vals = False
+        
     
     #Callback for the purpose of reading RGB data
     def image_callback(self, img_rgb):
@@ -197,10 +219,13 @@ class ObjectDetection:
         self.positions = []
 
     #Change of colour of shape input
-    def UserInput(self, Colour, Shape):
-        global colour, shape
+    def UserInput(self, Colour, Shape, ObjectDictionary, flag):
+        global colour, shape 
         colour = Colour
         shape = Shape
+        self.UI_flag = flag
+        self.Dictionary = ObjectDictionary
+        self.posCnt  = 0
         self.store_vals = True
         self.positions = []
 
