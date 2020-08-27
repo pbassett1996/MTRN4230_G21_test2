@@ -38,8 +38,7 @@ import actionlib
 import control_msgs.msg
 import time
 bucket_x = -0.4
-bucket_y = 0.6
-bucket_y = 0.5
+bucket_y = 0.4
 travel_height = 0.3
 end_effector_length = 0.05
 
