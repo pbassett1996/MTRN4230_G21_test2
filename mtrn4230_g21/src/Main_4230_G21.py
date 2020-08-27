@@ -87,9 +87,10 @@ def setVars(OD):
 
     #print "Picking up", str(colour), "objects of", str(shape), "shape/s."
     
-    time.sleep(3)
+    time.sleep(1)
     object_num = 0
     pos = OD.get_coordinates() #Get object coordinates
+    print(pos)
     pick_objs = True
 
 #Delete objects in Gazebo simulation
@@ -116,8 +117,8 @@ def spawn_objects(number, spawn, obj1, obj2, obj3, obj4, orientation):
         flag = False
         while flag == False:
             flag2 = False
-            pos_x = random.uniform(0.2,0.7)
-            pos_y = random.uniform(0.1,0.7)
+            pos_x = random.uniform(0.15,0.65)
+            pos_y = random.uniform(0.25,0.7)
             for i in range(0, len(obj_pos)+1):
                 if(len(obj_pos) == 0):
                     obj_pos.append([pos_x, pos_y])
@@ -180,7 +181,6 @@ def run(OD,pub, count, root, flag):
     count += 0.1
     
     #If the arm is not moving and we have pressed "go"
-    #TODO: wait for robot to finish task before retasking
     if(pick_objs == True):
         if(object_num < len(pos)):
             #send this to the pick place node
@@ -193,9 +193,12 @@ def run(OD,pub, count, root, flag):
             pub.publish(msg)
 
             object_num += 1
+            if(object_num == len(pos)):
+                pick_objs = False
+        
 
-    if count < 100:
-        root.after(100, run, OD,pub, count, root, flag)
+    if count < 10000:
+        root.after(10000, run, OD,pub, count, root, flag)
 
 def nullCmd():
     pass
