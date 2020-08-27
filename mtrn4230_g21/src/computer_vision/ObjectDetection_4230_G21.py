@@ -78,8 +78,11 @@ class ObjectDetection:
         global colour
         colourArray = ["green", "red", "blue", "yellow"]
         imgCopy = self.img.copy()
-        cv2.imshow("window", imgCopy)
-        cv2.waitKey(50)
+        cv2.namedWindow('Kinect Vision', cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('Kinect Vision', 640, 480)
+        cv2.imshow('Kinect Vision', imgCopy)
+        
+        cv2.waitKey(10)
         if(self.store_vals == True):
             if(self.UI_flag):
                 nums = len(colourArray)
